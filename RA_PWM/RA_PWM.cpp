@@ -57,17 +57,17 @@ RA_PWMClass::RA_PWMClass()
 #ifdef SIXTEENCHPWMEXPANSION
     SIXTEENChPresent=false;
     lastcrc=-1;
-	for ( byte a = 0; a < SIXTEENCH_PWM_EXPANSION_CHANNELS; a++ )
-	{
-		SIXTEENChExpansionChannel[a]=0;
-		SIXTEENChExpansionChannelOverride[a]=255;
-	}
-        Wire.beginTransmission(I2CPWM_16CH_PCA9685);
-        error = Wire.endTransmission();
-        if (error == 0)
-        { // then the 16 ch module is present at right address
-           SIXTEENChPresent=true;
-        }
+    for ( byte a = 0; a < SIXTEENCH_PWM_EXPANSION_CHANNELS; a++ )
+    {
+        SIXTEENChExpansionChannel[a]=0;
+        SIXTEENChExpansionChannelOverride[a]=255;
+    }
+    Wire.beginTransmission(I2CPWM_16CH_PCA9685);
+    byte error = Wire.endTransmission();
+    if (error == 0)
+    { // then the 16 ch module is present at right address
+       SIXTEENChPresent=true;
+    }
 #endif  // SIXTEENCHPWMEXPANSION
 }
 
