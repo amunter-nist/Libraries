@@ -54,6 +54,21 @@ RA_PWMClass::RA_PWMClass()
        NewExpansion = true;
     }
 #endif  // PWMEXPANSION
+#ifdef SIXTEENCHPWMEXPANSION
+    SIXTEENChPresent=false;
+    lastcrc=-1;
+	for ( byte a = 0; a < SIXTEENCH_PWM_EXPANSION_CHANNELS; a++ )
+	{
+		SIXTEENChExpansionChannel[a]=0;
+		SIXTEENChExpansionChannelOverride[a]=255;
+	}
+        Wire.beginTransmission(I2CPWM_16CH_PCA9685);
+        error = Wire.endTransmission();
+        if (error == 0)
+        { // then the 16 ch module is present at right address
+           SIXTEENChPresent=true;
+        }
+#endif  // SIXTEENCHPWMEXPANSION
 }
 
 byte RA_PWMClass::GetActinicValue()
@@ -911,4 +926,174 @@ void RA_PWMClass::ChannelPWMSmoothRamp(byte Channel, byte Start, byte End, byte 
 }
 
 #endif  // PWMEXPANSION
+
+#ifdef SIXTEENCHPWMEXPANSION
+
+void RA_PWMClass::SIXTEENChExpansion(byte channel, byte data)
+{
+    // the data is in byte, so it's assumed to be a percentage, like from a pump
+    if (channel<SIXTEENCH_PWM_EXPANSION_CHANNELS) SIXTEENChExpansionChannel[channel]=data;
+    Wire.beginTransmission(I2CPWM_16CH_PCA9685);
+    Wire.write(0);
+    Wire.write(0xa1);
+    Wire.endTransmission();
+    Wire.beginTransmission(I2CPWM_16CH_PCA9685);
+    int newdata = (int)data*40.95;
+    Wire.write(0x8+(4*channel));
+    Wire.write(newdata&0xff);
+    Wire.write(newdata>>8);
+    Wire.endTransmission();
+}
+
+void RA_PWMClass::SIXTEENChExpansion(byte channel, int data)
+{
+    // the data is in int, so just send that int to the module
+    if (channel<SIXTEENCH_PWM_EXPANSION_CHANNELS) SIXTEENChExpansionChannel[channel]=data;
+    Wire.beginTransmission(I2CPWM_16CH_PCA9685);
+    Wire.write(0);
+    Wire.write(0xa1);
+    Wire.endTransmission();
+    Wire.beginTransmission(I2CPWM_16CH_PCA9685);
+    Wire.write(0x8+(4*channel));
+    Wire.write(data&0xff);
+    Wire.write(data>>8);
+    Wire.endTransmission();
+}
+
+void RA_PWMClass::SIXTEENChExpansionSetPercent(byte p)
+{
+	// loop through all 16 channels and send the value
+	for ( byte a = 0; a < SIXTEENCH_PWM_EXPANSION_CHANNELS; a++ )
+	{
+		SIXTEENChExpansion(a, p);
+	}
+}
+
+void RA_PWMClass::SIXTEENChExpansionWrite()
+{
+	byte thiscrc=0;
+	for ( byte a = 0; a < SIXTEENCH_PWM_EXPANSION_CHANNELS; a++ )
+		thiscrc+=Get16ChannelValueRaw(a)*(a+1);
+	if (millis()%60000<200) lastcrc=-1;
+	if (lastcrc!=thiscrc || millis()<5000)
+	{
+		lastcrc=thiscrc;
+		// setup PCA9685 for data receive
+		// we need this to make sure it will work if connected ofter controller is booted, so we need to send it all the time.
+		Wire.beginTransmission(I2CPWM_16CH_PCA9685);
+		Wire.write(0);
+		Wire.write(0xa1);
+		Wire.endTransmission();
+		for ( byte a = 0; a < SIXTEENCH_PWM_EXPANSION_CHANNELS; a++ )
+		{
+			SIXTEENChExpansion(a,Get16ChannelValueRaw(a));
+		}
+	}
+}
+
+byte RA_PWMClass::Get16ChannelValue(byte Channel)
+{
+	if (SIXTEENChExpansionChannelOverride[Channel]<=100)
+		return SIXTEENChExpansionChannelOverride[Channel];
+	else
+		return (byte)(SIXTEENChExpansionChannel[Channel]/40.95);
+}
+
+int RA_PWMClass::Get16ChannelValueRaw(byte Channel)
+{
+	if (SIXTEENChExpansionChannelOverride[Channel]<=100)
+		return (int)SIXTEENChExpansionChannelOverride[Channel]*40.95;
+	else
+		return SIXTEENChExpansionChannel[Channel];
+}
+
+void RA_PWMClass::SIXTEENChannelPWMSlope(byte Channel, int Start, int End, byte Duration)
+{
+	Set16Channel(Channel,PWMSlopeHighRes(
+		InternalMemory.StdLightsOnHour_read(),
+		InternalMemory.StdLightsOnMinute_read(),
+		InternalMemory.StdLightsOffHour_read(),
+		InternalMemory.StdLightsOffMinute_read(),
+		Start,
+		End, 
+		Duration,  
+		SIXTEENChExpansionChannel[Channel] 
+	));	
+}
+
+void RA_PWMClass::SIXTEENChannelPWMSlope(byte Channel, int Start, int End, byte Duration, byte MinuteOffset)
+{
+	int onTime=NumMins(InternalMemory.StdLightsOnHour_read(),InternalMemory.StdLightsOnMinute_read())-MinuteOffset;
+	int offTime=NumMins(InternalMemory.StdLightsOffHour_read(),InternalMemory.StdLightsOffMinute_read())+MinuteOffset;
+	Set16Channel(Channel,PWMSlopeHighRes(
+		onTime/60,
+		onTime%60,
+		offTime/60,
+		offTime%60,
+		Start,
+		End, 
+		Duration,  
+		SIXTEENChExpansionChannel[Channel] 
+	));	
+}
+
+void RA_PWMClass::SIXTEENChannelPWMParabola(byte Channel, int Start, int End)
+{
+	Set16Channel(Channel,PWMParabolaHighRes(
+		InternalMemory.StdLightsOnHour_read(),
+		InternalMemory.StdLightsOnMinute_read(),
+		InternalMemory.StdLightsOffHour_read(),
+		InternalMemory.StdLightsOffMinute_read(),
+		Start,
+		End, 
+		SIXTEENChExpansionChannel[Channel] 
+	));	
+}
+
+void RA_PWMClass::SIXTEENChannelPWMParabola(byte Channel, int Start, int End, byte MinuteOffset)
+{
+	int onTime=NumMins(InternalMemory.StdLightsOnHour_read(),InternalMemory.StdLightsOnMinute_read())-MinuteOffset;
+	int offTime=NumMins(InternalMemory.StdLightsOffHour_read(),InternalMemory.StdLightsOffMinute_read())+MinuteOffset;
+	Set16Channel(Channel,PWMParabolaHighRes(
+		onTime/60,
+		onTime%60,
+		offTime/60,
+		offTime%60,
+		Start,
+		End, 
+		SIXTEENChExpansionChannel[Channel] 
+	));	
+}
+
+void RA_PWMClass::SIXTEENChannelPWMSmoothRamp(byte Channel, int Start, int End, byte SlopeLength)
+{
+	Set16Channel(Channel,PWMSmoothRampHighRes(
+		InternalMemory.StdLightsOnHour_read(),
+		InternalMemory.StdLightsOnMinute_read(),
+		InternalMemory.StdLightsOffHour_read(),
+		InternalMemory.StdLightsOffMinute_read(),
+		Start,
+		End, 
+		SlopeLength, 
+		SIXTEENChExpansionChannel[Channel] 
+	));	
+}
+
+void RA_PWMClass::SIXTEENChannelPWMSmoothRamp(byte Channel, int Start, int End, byte SlopeLength, byte MinuteOffset)
+{
+	int onTime=NumMins(InternalMemory.StdLightsOnHour_read(),InternalMemory.StdLightsOnMinute_read())-MinuteOffset;
+	int offTime=NumMins(InternalMemory.StdLightsOffHour_read(),InternalMemory.StdLightsOffMinute_read())+MinuteOffset;
+	Set16Channel(Channel,PWMSmoothRampHighRes(
+		onTime/60,
+		onTime%60,
+		offTime/60,
+		offTime%60,
+		Start,
+		End, 
+                SlopeLength,
+		SIXTEENChExpansionChannel[Channel] 
+	));	
+}
+
+#endif //SIXTEENCHPWMEXPANSION
 

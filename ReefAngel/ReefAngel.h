@@ -217,6 +217,10 @@ public:
 
 	EM1 Bits
 	Bit 0 - HUMbit
+	Bit 1 - DCPumpbit
+	Bit 2 - Leakbit
+	Bit 3 - PARbit
+	Bit 4 - SCPWMbit
 	 */
 
 #ifdef RelayExp
