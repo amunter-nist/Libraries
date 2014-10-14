@@ -206,16 +206,16 @@ int PWMSigmoidHighRes(byte startHour, byte startMinute, byte endHour, byte endMi
   else
   { // do the slope calculation
     int pwmDelta = endPWMint - startPWMint;
-    float smoothPhase; // X axis, needs to go from -5.0 to 5.0 over FWHM
+    float smoothPhase; // X axis, needs to go from -6.0 to 6.0 over FWHM
     if ((current > (start + FWHMSecs)) && (current < (end - FWHMSecs))) 
       return endPWMint; // if it's in the middle of the slope, return the high level
-    else if ((current - start) < FWHMSecs) 
-    {  // it's in the beginning slope up go from -5 to 5
-      smoothPhase = (10.0*((float)current-(float)start)/(float)FWHMSecs) - 5.0;
+    else if ((current - start) <= FWHMSecs) 
+    {  // it's in the beginning slope up go from -6 to 6
+      smoothPhase = (12.0*((float)current-(float)start)/(float)FWHMSecs) - 6.0;
     }
     else if ((end - current) < FWHMSecs)
-    { // it's in the end slope down, go from 5 to -5
-      smoothPhase = (10.0*((float)end-(float)current)/(float)FWHMSecs) - 5.0;
+    { // it's in the end slope down, go from 6 to -6
+      smoothPhase = (12.0*((float)end-(float)current)/(float)FWHMSecs) - 6.0;
     }
     smoothPhase = -1.0*smoothPhase;
     return startPWMint + (int)((1.0/(1.0+exp(smoothPhase)))*pwmDelta);
@@ -358,16 +358,16 @@ byte PWMSigmoid(byte startHour, byte startMinute, byte endHour, byte endMinute, 
   else
   { // do the slope calculation
     byte pwmDelta = endPWM - startPWM;
-    float smoothPhase; // X axis, needs to go from -5.0 to 5.0 over FWHM
+    float smoothPhase; // X axis, needs to go from -6.0 to 6.0 over FWHM
     if ((current > (start + FWHM)) && (current < (end - FWHM))) 
       return endPWM; // if it's in the middle of the slope, return the high level
-    else if ((current - start) < FWHM) 
-    {  // it's in the beginning slope up go from -5 to 5
-      smoothPhase = (10.0*(float)(current-start)/(float)FWHM) - 5.0;
+    else if ((current - start) <= FWHM) 
+    {  // it's in the beginning slope up go from -6 to 6
+      smoothPhase = (12.0*(float)(current-start)/(float)FWHM) - 6.0;
     }
     else if ((end - current) < FWHM)
-    { // it's in the end slope down, go from 5 to -5
-      smoothPhase = (10.0*(float)(end-current)/(float)FWHM) - 5.0;
+    { // it's in the end slope down, go from 6 to -6
+      smoothPhase = (12.0*(float)(end-current)/(float)FWHM) - 6.0;
     }
     smoothPhase = -1.0*smoothPhase;
     return startPWM + (byte)((1.0/(1.0+exp(smoothPhase)))*pwmDelta);

@@ -1530,7 +1530,7 @@ void RA_PWMClass::SIXTEENChannelPWMSigmoid(byte Channel, int Start, int End)
 		InternalMemory.StdLightsOffMinute_read(),
 		Start,
 		End, 
-		SIXTEENChExpansionChannel[Channel] 
+		0
 	));	
 }
 
@@ -1550,7 +1550,7 @@ void RA_PWMClass::SIXTEENChannelPWMSigmoid(byte Channel, int Start, int End, int
 		offTime%60,
 		Start,
 		End, 
-		SIXTEENChExpansionChannel[Channel] 
+		0
 	));	
 }
 

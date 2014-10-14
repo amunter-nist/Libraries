@@ -308,8 +308,8 @@ void ReefAngelClass::Refresh()
 	}
 	case NutrientTransport:
 	{
-		SyncSpeed=NutrientTransportMode(0,DCPump.Speed,DCPump.Duration*10,true);
-		AntiSyncSpeed=NutrientTransportMode(0,DCPump.Speed,DCPump.Duration*10,false);
+		SyncSpeed=NutrientTransportMode(DCPump.Threshold,DCPump.Speed,DCPump.Duration*10,true);
+		AntiSyncSpeed=NutrientTransportMode(DCPump.Threshold,DCPump.Speed,DCPump.Duration*10,false);
 		break;
 	}
 	case TidalSwell:
