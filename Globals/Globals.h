@@ -334,10 +334,12 @@ const prog_char NoIMCheck1[] PROGMEM = "Found";
 #endif // __PLUS_SPECIAL_WIFI__
 
 #ifdef RANET
-#define RANET_SIZE						42
+#define RANET_SIZE						65
 // 8 Exp. Boxes, 1 Dimming
 // Seq + Size + 8 relay status + 8 relay fallback + 6 dimming channels + 16 dimming channels + CR + LF = 42 bytes
+// NEW Seq + Size + 8 relay status +8 relay fallback + 12 bytes for integer dimming + 32 bytes for integer 16 channel dimming + Trigger + CR + LF = 64 bytes
 static byte RANetSeq, RANetCRC;
+static byte RANetTrigger, TriggerValue;
 static byte RANetData[RANET_SIZE];
 static byte RANetStatus[RANET_SIZE];
 static unsigned long RANetlastmillis;
@@ -598,9 +600,10 @@ When adding more variables, use the previous value plus 1 or 2
 #define Mem_B_DCPumpThreshold     VarsStart+164
 #define Mem_I_PHEControlOn        VarsStart+165
 #define Mem_I_PHEControlOff       VarsStart+167
+#define Mem_B_TestMode			  VarsStart+169
 
-#define VarsEnd					  VarsStart+169
-// Next value starts VarsStart+169
+#define VarsEnd					  VarsStart+170
+// Next value starts VarsStart+170
 
 
 // EEProm Pointers
