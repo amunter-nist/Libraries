@@ -222,9 +222,20 @@ public:
 
 #ifdef SIXTEENCHPWMEXPANSION
 	int SIXTEENChExpansionChannel[SIXTEENCH_PWM_EXPANSION_CHANNELS];
+	int OldSIXTEENChExpansionChannel[SIXTEENCH_PWM_EXPANSION_CHANNELS];
 	byte SIXTEENChExpansionChannelOverride[SIXTEENCH_PWM_EXPANSION_CHANNELS];
-	void inline Set16ChannelRaw(byte Channel, int Value) { if (Channel<SIXTEENCH_PWM_EXPANSION_CHANNELS) SIXTEENChExpansionChannel[Channel]=Value; };
-	void inline Set16Channel(byte Channel, byte Value) { if (Channel<SIXTEENCH_PWM_EXPANSION_CHANNELS) SIXTEENChExpansionChannel[Channel]=(int)Value*40.95; };
+	void inline Set16ChannelRaw(byte Channel, int Value) { 
+		if (Channel<SIXTEENCH_PWM_EXPANSION_CHANNELS) {
+			OldSIXTEENChExpansionChannel[Channel]=SIXTEENChExpansionChannel[Channel];
+			SIXTEENChExpansionChannel[Channel]=Value; 
+		}
+	};
+	void inline Set16Channel(byte Channel, byte Value) { 
+		if (Channel<SIXTEENCH_PWM_EXPANSION_CHANNELS) {
+			OldSIXTEENChExpansionChannel[Channel]=SIXTEENChExpansionChannel[Channel];
+			SIXTEENChExpansionChannel[Channel]=(int)Value*40.95; 
+		};
+	};
 	void inline Set16ChannelOverride(byte Channel, byte Value) { if (Value>100) Value=255; if (Channel<SIXTEENCH_PWM_EXPANSION_CHANNELS) SIXTEENChExpansionChannelOverride[Channel]=Value; };
 	void SIXTEENChExpansion(byte cmd, int data);
 	void SIXTEENChExpansion(byte cmd, byte data);

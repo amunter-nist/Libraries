@@ -1397,7 +1397,7 @@ void RA_PWMClass::SIXTEENChExpansionWrite()
 		Wire.endTransmission();
 		for ( byte a = 0; a < SIXTEENCH_PWM_EXPANSION_CHANNELS; a++ )
 		{
-			SIXTEENChExpansion(a,Get16ChannelValueRaw(a));
+			if (OldSIXTEENChExpansionChannel[a]!=SIXTEENChExpansionChannel[a]) SIXTEENChExpansion(a,Get16ChannelValueRaw(a));
 		}
 	}
 }
