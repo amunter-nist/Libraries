@@ -1218,8 +1218,8 @@ void ReefAngelClass::Draw2014Main()
 	byte offset;
 	byte x,y,w;
 	char buf[16];
-	String PUMP_MODES[] = {"Constant","Lagoon","ReefCrest","Short Pulse","Long Pulse","Nutrient Trans.","Tidal Swell","Feeding","","Night","Custom"};
-	byte PUMP_COLORS[] = {COLOR_DARKGREEN,COLOR_DARKGOLDENROD,COLOR_DARKGOLDENROD,COLOR_NAVY,COLOR_MEDIUMPURPLE,COLOR_HOTPINK,COLOR_HOTPINK,COLOR_SLATEGREY,COLOR_SLATEGREY,COLOR_INDIANRED};
+	String PUMP_MODES[] = {"Constant","Lagoon","ReefCrest","Short Pulse","Long Pulse","Nutrient Trans.","Tidal Swell","Feeding","","Night","","Custom","Else","Sine","Gyre"};
+	byte PUMP_COLORS[] = {COLOR_DARKGREEN,COLOR_DARKGOLDENROD,COLOR_DARKGOLDENROD,COLOR_NAVY,COLOR_MEDIUMPURPLE,COLOR_HOTPINK,COLOR_HOTPINK,COLOR_SLATEGREY,COLOR_BLACK,COLOR_INDIANRED,COLOR_BLACK,COLOR_INDIGO,COLOR_SLATEGREY,COLOR_SLATEGREY,COLOR_SLATEGREY};
 
 	if (Joystick.IsLeft())
 	{
@@ -1882,7 +1882,8 @@ void ReefAngelClass::Draw2014Main()
 		for (int a=0; a<8; a++)
 		{
 			ConvertNumToString(text, CustomVar[a], 1);
-			LCD.DrawLargeText(COLOR_BLACK,COLOR_WHITE,x,y,text);
+			LCD.DrawLargeText(COLOR_BLACK,DefaultBGColor,x,y,"   ");
+			LCD.DrawLargeText(COLOR_BLACK,DefaultBGColor,x,y,text);
 			y+=12;
 		}
 		break;
@@ -3800,8 +3801,8 @@ void ReefAngelClass::DisplaySetupCalibrateChoicePHExp()
     {
         PHExpMin=map(PH_DEFAULT_RANGE[LOW], ph_target_range[LOW], ph_target_range[HIGH], ph_read_range[LOW], ph_read_range[HIGH]);
         PHExpMax=map(PH_DEFAULT_RANGE[HIGH], ph_target_range[LOW], ph_target_range[HIGH], ph_read_range[LOW], ph_read_range[HIGH]);
-        InternalMemory.PHMin_write(PHExpMin);
-        InternalMemory.PHMax_write(PHExpMax);
+        InternalMemory.PHExpMin_write(PHExpMin);
+        InternalMemory.PHExpMax_write(PHExpMax);
     }
 }
 #endif  // PHEXPANSION
