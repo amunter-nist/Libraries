@@ -21,6 +21,9 @@ digitalWrite(SDPin,HIGH);
 pinMode(BuzzerPin,OUTPUT);
 pinMode(actinic2PWMPin,OUTPUT);
 pinMode(daylight2PWMPin,OUTPUT);
+pinMode(i2cMuxEnable,OUTPUT);
+pinMode(i2cEnable1,OUTPUT);
+pinMode(i2cEnable2,OUTPUT);
 digitalWrite(actinic2PWMPin,LOW); //pull down resistor on actinicPWMPin
 digitalWrite(daylight2PWMPin,LOW); //pull down resistor on daylightPWMPin
 DDRJ&=(0<<3); //PJ3 as input (SD card detect pin)
@@ -29,17 +32,18 @@ DDRJ&=(0<<4); //PJ4 as input (Alarm pin)
 PORTJ|=(1<<4); //PJ4 pull up
 DDRH|=(1<<2); // Port PH2 output (Exp Bus Power)
 cbi(PORTH,2); // Turn on exp bus power
-pinMode(i2cMuxEnable,OUTPUT);
 digitalWrite(i2cMuxEnable,LOW);
 delay(10);
 digitalWrite(i2cMuxEnable,HIGH);
+digitalWrite(i2cEnable1,HIGH);
+digitalWrite(i2cEnable2,HIGH);
 SPI.begin();
 Serial.println(F("SPI Init"));
 TouchLCD.Init();
 Serial.println(F("LCD Init"));
-SmallFont.SetFont(f8x8);
-Font.SetFont(f12x12);
-LargeFont.SetFont(ArialBold20);
+SmallFont.SetFont((unsigned char *)f8x8);
+Font.SetFont((unsigned char *)f12x12);
+LargeFont.SetFont((unsigned char *)ArialBold20);
 setSyncProvider(RTC.get);   // the function to get the time from the RTC
 setSyncInterval(SECS_PER_HOUR*6);  // Changed to sync every 6 hours.
 //EthernetDHCP.begin(NetMac, 1); // Start Ethernet with DHCP polling enabled
@@ -53,8 +57,10 @@ Splash=true;
 TouchEnabled=true;
 lastRedraw=millis();
 lastDisplayChange=millis();
+#ifdef RANET
 RANetSeq=0;
 RANetlastmillis=millis();
+#endif
 OkButton.Create(COLOR_WHITE,COLOR_MIDNIGHTBLUE,CUSTOMLABELOKBUTTON,OKBUTTON);
 CancelButton.Create(COLOR_WHITE,COLOR_MIDNIGHTBLUE,CUSTOMLABELCANCELBUTTON,CANCELBUTTON);
 Slider.Create(COLOR_ROYALBLUE,COLOR_RED,"");
@@ -111,6 +117,10 @@ if (SDFound)
 	SD.begin(SDPin);
 	wdt_reset();
 	Serial.println(F("SD Init"));
+	if (SD.exists("FIRMWARE.BIN")) {
+		Serial.println(F("deleting firmware..."));
+		SD.remove("FIRMWARE.BIN");
+	}
 	if (orientation%2==0)
 		TouchLCD.DrawSDRawImage("splash_l.raw",0,0,320,240);
 	else
@@ -138,8 +148,16 @@ if (InternalMemory.IMCheck_read()!=0xCF06A31E)
 	char temptext[25];
 	while(1)
 	{
-		digitalWrite(ledPin,millis()%2000>100);
-		SetOrientation(2);
+		BuzzerOn(0);
+		delay(50);
+		BuzzerOff();
+		delay(100);
+		BuzzerOn(0);
+		delay(50);
+		BuzzerOff();
+		delay(700);
+		wdt_reset();
+		SetOrientation(4);
 		LargeFont.SetColor(WARNING_TEXT,BKCOLOR,true);
 		LargeFont.DrawCenterTextP(TouchLCD.GetWidth()/2,20,NoIMCheck);
 		LargeFont.DrawCenterTextP(TouchLCD.GetWidth()/2,70,NoIMCheck1);

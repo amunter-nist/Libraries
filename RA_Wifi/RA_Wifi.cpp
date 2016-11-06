@@ -51,7 +51,7 @@ RA_Wifi::RA_Wifi()
   usingAuth=false;
 }
 
-void RA_Wifi::WebResponse (const prog_char *response, long strsize)
+void RA_Wifi::WebResponse (const char *response, long strsize)
 {
 //  P(WebHeaderMsg) = SERVER_HEADER_HTML;
 //  printP(WebHeaderMsg);
@@ -215,6 +215,23 @@ void RA_Wifi::PushBuffer(byte inStr)
 #endif
             else if (strncmp("GET /cal", m_pushback, 8)==0) { reqtype = -REQ_CALIBRATION; weboption2 = -1; bHasSecondValue = false; bCommaCount = 0; }
             else if (strncmp("GET /json", m_pushback, 9)==0) reqtype = REQ_JSON;
+#ifdef CLOUD_WIFI
+            else if (strncmp("cloud:", m_pushback, 6)==0)
+            {
+            	if (inStr==' ')
+            	{
+            		byte cloudstr[m_pushbackindex-6];
+            		for (int a=6; a<m_pushbackindex;a++)
+            		{
+            			cloudstr[a-6]=m_pushback[a];
+            		}
+            		cloudstr[sizeof(cloudstr)-1]=0;
+        			MQTTSubCallback("",cloudstr,sizeof(cloudstr));
+        			while(_wifiSerial->available()) _wifiSerial->read();
+            	}
+            	//reqtype = REQ_CLOUD;
+            }
+#endif // CLOUD_WIFI
             //else reqtype = -REQ_UNKNOWN;
 		}
 	}
@@ -1634,7 +1651,7 @@ void RA_Wifi::SendJSONData()
 	PROGMEMprint(JSON_CLOSE);
 }
 
-void RA_Wifi::SendSingleJSON(const prog_char str[], int value, char* suffix)
+void RA_Wifi::SendSingleJSON(const char str[], int value, char* suffix)
 {
 	print(",\"");
 	PROGMEMprint(str);
@@ -1645,7 +1662,7 @@ void RA_Wifi::SendSingleJSON(const prog_char str[], int value, char* suffix)
 	print("\"");
 }
 
-void RA_Wifi::SendSingleJSON(const prog_char str[], char* value)
+void RA_Wifi::SendSingleJSON(const char str[], char* value)
 {
 	print("\"");
 	PROGMEMprint(str);
@@ -1689,13 +1706,14 @@ void RA_Wifi::ReceiveData()
   if ( _wifiSerial->available() > 0 ) ProcessSerial();
 }
 
-void RA_Wifi::PROGMEMprint(const prog_char str[])
+void RA_Wifi::PROGMEMprint(const char *str)
 {
     char c;
     if(!str) return;
     while((c = pgm_read_byte(str++)))
     {
-      write(c);
+    	//Serial.print(c);
+    	print(c);
     }
 }
 
@@ -1707,32 +1725,6 @@ void RA_Wifi::LoadWebBanner(int pointer, byte qty)
 
 void RA_Wifi::Portal(char *username)
 {
-  /*
-  static byte LastRelayData;
-    byte TempRelay = Relay.RelayData;
-    TempRelay &= Relay.RelayMaskOff;
-    TempRelay |= Relay.RelayMaskOn;
-    if (TempRelay!=LastRelayData)
-    {
-      Timer[PORTAL_TIMER].ForceTrigger();
-      LastRelayData=TempRelay;
-    }
-#ifdef RelayExp
-  static byte LastRelayDataE[MAX_RELAY_EXPANSION_MODULES];
-
-    for ( byte EID = 0; EID < MAX_RELAY_EXPANSION_MODULES; EID++ )
-  {
-    TempRelay = Relay.RelayDataE[EID];
-    TempRelay &= Relay.RelayMaskOffE[EID];
-    TempRelay |= Relay.RelayMaskOnE[EID];
-      if (TempRelay!=LastRelayDataE[EID])
-      {
-        Timer[PORTAL_TIMER].ForceTrigger();
-        LastRelayDataE[EID]=TempRelay;
-      }
-  }
-#endif  // RelayExp
-   */
   if (ReefAngel.Timer[PORTAL_TIMER].IsTriggered()) SendPortal(username,"");
 #ifdef ETH_WIZ5100
   if (ReefAngel.Network.PortalConnection && ReefAngel.Network.FoundIP) SendPortal(username,"");

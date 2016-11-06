@@ -196,6 +196,11 @@ void ReefAngelClass::Init()
 		CustomVar[EID]=0;
 	}
 #endif //CUSTOM_VARIABLES
+#ifdef CLOUD_WIFI
+	CloudDummyByte=0;
+	CloudDummyInt=0;
+	LastCloudCheck=millis();
+#endif
 #ifdef RA_TOUCHDISPLAY
 	SendMaster(MESSAGE_RESEND_ALL,0,0);
 #endif // RA_TOUCHDISPLAY
@@ -340,6 +345,12 @@ void ReefAngelClass::Refresh()
 		AntiSyncSpeed=ElseMode(DCPump.Speed,DCPump.Duration,false);
 		break;
 	}
+	case Storm:
+	{
+		SyncSpeed=StormMode(DCPump.Speed,DCPump.Duration,true);
+		AntiSyncSpeed=StormMode(DCPump.Speed,DCPump.Duration,false);
+		break;
+    }
     }
 	if (DisplayedMenu==FEEDING_MODE)
 	{
@@ -612,33 +623,52 @@ void ReefAngelClass::Refresh()
 	RefreshScreen();
 #endif // EXTRA_TEMP_PROBES	
 #else  // DirectTempSensor
-	int x = TempSensor.ReadTemperature(TempSensor.addrT1);
-	RefreshScreen();
-	int y;
-	y = x - Params.Temp[T1_PROBE];
-	// check to make sure the temp readings aren't beyond max allowed
-	if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T1_PROBE] == 0 || ~x) Params.Temp[T1_PROBE] = x;
-	x = TempSensor.ReadTemperature(TempSensor.addrT2);
-	RefreshScreen();
-	y = x - Params.Temp[T2_PROBE];
-	if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T2_PROBE] == 0 || ~x) Params.Temp[T2_PROBE] = x;
-	x = TempSensor.ReadTemperature(TempSensor.addrT3);
-	RefreshScreen();
-	y = x - Params.Temp[T3_PROBE];
-	if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T3_PROBE] == 0 || ~x) Params.Temp[T3_PROBE] = x;
+	int x=0;
+	int y=0;
+	if (TempSensor.addrT1[0]!=0 && TempSensor.addrT1[7]!=0)
+	{
+		x = TempSensor.ReadTemperature(TempSensor.addrT1);
+		RefreshScreen();
+		y = x - Params.Temp[T1_PROBE];
+		// check to make sure the temp readings aren't beyond max allowed
+		if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T1_PROBE] == 0 || ~x) Params.Temp[T1_PROBE] = x;
+	}
+	if (TempSensor.addrT2[0]!=0 && TempSensor.addrT2[7]!=0)
+	{
+		x = TempSensor.ReadTemperature(TempSensor.addrT2);
+		RefreshScreen();
+		y = x - Params.Temp[T2_PROBE];
+		if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T2_PROBE] == 0 || ~x) Params.Temp[T2_PROBE] = x;
+	}
+	if (TempSensor.addrT3[0]!=0 && TempSensor.addrT3[7]!=0)
+	{
+		x = TempSensor.ReadTemperature(TempSensor.addrT3);
+		RefreshScreen();
+		y = x - Params.Temp[T3_PROBE];
+		if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T3_PROBE] == 0 || ~x) Params.Temp[T3_PROBE] = x;
+	}
 #ifdef EXTRA_TEMP_PROBES
-	x = TempSensor.ReadTemperature(TempSensor.addrT4);
-	RefreshScreen();
-	y = x - Params.Temp[T4_PROBE];
-	if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T4_PROBE] == 0 || ~x) Params.Temp[T4_PROBE] = x;
-	x = TempSensor.ReadTemperature(TempSensor.addrT5);
-	RefreshScreen();
-	y = x - Params.Temp[T5_PROBE];
-	if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T5_PROBE] == 0 || ~x) Params.Temp[T5_PROBE] = x;
-	x = TempSensor.ReadTemperature(TempSensor.addrT6);
-	RefreshScreen();
-	y = x - Params.Temp[T6_PROBE];
-	if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T6_PROBE] == 0 || ~x) Params.Temp[T6_PROBE] = x;
+	if (TempSensor.addrT4[0]!=0 && TempSensor.addrT4[7]!=0)
+	{
+		x = TempSensor.ReadTemperature(TempSensor.addrT4);
+		RefreshScreen();
+		y = x - Params.Temp[T4_PROBE];
+		if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T4_PROBE] == 0 || ~x) Params.Temp[T4_PROBE] = x;
+	}
+	if (TempSensor.addrT5[0]!=0 && TempSensor.addrT5[7]!=0)
+	{
+		x = TempSensor.ReadTemperature(TempSensor.addrT5);
+		RefreshScreen();
+		y = x - Params.Temp[T5_PROBE];
+		if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T5_PROBE] == 0 || ~x) Params.Temp[T5_PROBE] = x;
+	}
+	if (TempSensor.addrT6[0]!=0 && TempSensor.addrT6[7]!=0)
+	{
+		x = TempSensor.ReadTemperature(TempSensor.addrT6);
+		RefreshScreen();
+		y = x - Params.Temp[T6_PROBE];
+		if ( abs(y) < MAX_TEMP_SWING || Params.Temp[T6_PROBE] == 0 || ~x) Params.Temp[T6_PROBE] = x;
+	}
 #endif // EXTRA_TEMP_PROBES	
 #endif  // DirectTempSensor
 	Params.PH=0;
@@ -998,7 +1028,7 @@ void ReefAngelClass::StandardHeater(byte Probe, byte HeaterRelay, int LowTemp, i
 
 void ReefAngelClass::StandardHeater(byte HeaterRelay, int LowTemp, int HighTemp)
 {
-	StandardHeater(T1_PROBE, HeaterRelay, LowTemp, HighTemp);
+	StandardHeater(TempProbe, HeaterRelay, LowTemp, HighTemp);
 }
 
 void ReefAngelClass::StandardHeater2(byte HeaterRelay, int LowTemp, int HighTemp)
@@ -1022,7 +1052,7 @@ void ReefAngelClass::StandardFan(byte Probe, byte FanRelay, int LowTemp, int Hig
 
 void ReefAngelClass::StandardFan(byte FanRelay, int LowTemp, int HighTemp)
 {
-	StandardFan(T1_PROBE, FanRelay, LowTemp, HighTemp);
+	StandardFan(TempProbe, FanRelay, LowTemp, HighTemp);
 }
 
 void ReefAngelClass::StandardFan2(byte FanRelay, int LowTemp, int HighTemp)
@@ -1128,7 +1158,7 @@ void ReefAngelClass::WaterLevelATO(byte ATORelay, int ATOTimeout, byte LowLevel,
 	Is the low level is reached (meaning we need to top off) and are we not currently topping off
 	Then we set the timer to be now and start the topping pump
 	 */
-	if ( WaterLevel.GetLevel(Channel) < LowLevel && ( !WLATO.IsTopping()) )
+	if ( WaterLevel.GetLevel(Channel) < LowLevel && ( !WLATO.IsTopping()) && bitRead(AlertFlags,ATOTimeOutFlag)==0)
 	{
 		WLATO.Timer = millis();
 		WLATO.StartTopping();
@@ -1498,9 +1528,37 @@ void ReefAngelClass::StandardHeater(byte Relay)
 			InternalMemory.HeaterTempOff_read());
 }
 
+void ReefAngelClass::StandardHeater2(byte Relay)
+{
+	StandardHeater(T2_PROBE,Relay,
+			InternalMemory.HeaterTempOn_read(),
+			InternalMemory.HeaterTempOff_read());
+}
+
+void ReefAngelClass::StandardHeater3(byte Relay)
+{
+	StandardHeater(T3_PROBE,Relay,
+			InternalMemory.HeaterTempOn_read(),
+			InternalMemory.HeaterTempOff_read());
+}
+
 void ReefAngelClass::StandardFan(byte Relay)
 {
 	StandardFan(Relay,
+			InternalMemory.ChillerTempOff_read(),
+			InternalMemory.ChillerTempOn_read());
+}
+
+void ReefAngelClass::StandardFan2(byte Relay)
+{
+	StandardFan(T2_PROBE,Relay,
+			InternalMemory.ChillerTempOff_read(),
+			InternalMemory.ChillerTempOn_read());
+}
+
+void ReefAngelClass::StandardFan3(byte Relay)
+{
+	StandardFan(T3_PROBE,Relay,
 			InternalMemory.ChillerTempOff_read(),
 			InternalMemory.ChillerTempOn_read());
 }
@@ -1805,6 +1863,8 @@ void ReefAngelClass::ExitMenu()
 #endif
 	CheckDrawGraph();
 	redrawmenu=true;
+	OldTempRelay=Relay.RelayData-1;
+	OldParams.PH=Params.PH-1;
 }
 
 void ReefAngelClass::SetDisplayedMenu(byte value)
@@ -1816,6 +1876,13 @@ void ReefAngelClass::SetDisplayedMenu(byte value)
 }
 
 #if defined wifi || defined ETH_WIZ5100
+#ifdef ETH_WIZ5100
+void ReefAngelClass::Portal()
+{
+	Network.Portal(CLOUD_USERNAME);
+}
+#endif // ETH_WIZ5100
+
 void ReefAngelClass::Portal(char *username)
 {
 	Network.Portal(username);
@@ -1825,6 +1892,44 @@ void ReefAngelClass::Portal(char *username, char *key)
 {
 	Network.Portal(username,key);
 }
+#ifdef CLOUD_WIFI
+void ReefAngelClass::CloudPortal()
+{
+	Network.Portal(CLOUD_USERNAME);
+	if (millis()-LastCloudCheck>1000)
+	{
+		LastCloudCheck=millis();
+		for (byte a=0; a<NumParamByte;a++)
+		{
+			if (*ReefAngel.ParamArrayByte[a]!=ReefAngel.OldParamArrayByte[a])
+			{
+				char buffer[15];
+				strcpy_P(buffer, (char*)pgm_read_word(&(param_items_byte[a]))); 
+				sprintf(buffer, "%s:%d", buffer, *ReefAngel.ParamArrayByte[a]);
+				Serial.print(F("CLOUD:"));
+				Serial.println(buffer);
+				ReefAngel.OldParamArrayByte[a]=*ReefAngel.ParamArrayByte[a];
+				delay(10);
+			}
+		}
+		for (byte a=0; a<NumParamInt;a++)
+		{
+			if (*ReefAngel.ParamArrayInt[a]!=ReefAngel.OldParamArrayInt[a])
+			{
+				char buffer[15];
+				strcpy_P(buffer, (char*)pgm_read_word(&(param_items_int[a]))); 
+				sprintf(buffer, "%s:%d", buffer, *ReefAngel.ParamArrayInt[a]);
+				Serial.print(F("CLOUD:"));
+				Serial.println(buffer);
+				ReefAngel.OldParamArrayInt[a]=*ReefAngel.ParamArrayInt[a];
+				delay(10);
+			}
+		}
+	}		
+
+
+}
+#endif // CLOUD_WIFI
 
 void ReefAngelClass::DDNS(char *subdomain)
 {
@@ -2434,6 +2539,17 @@ void ReefAngelClass::SetDCPumpChannels(byte SyncSpeed, byte AntiSyncSpeed)
             PWM.SetActinic(AntiSyncSpeed);
 #endif // __SAM3X8E__
 
+#ifdef RA_STAR
+            if (DCPump.Daylight2Channel==Sync)
+                PWM.SetDaylight2(SyncSpeed);
+            else if (DCPump.Daylight2Channel==AntiSync)
+                PWM.SetDaylight2(AntiSyncSpeed);
+
+            if (DCPump.Actinic2Channel==Sync)
+                PWM.SetActinic2(SyncSpeed);
+            else if (DCPump.Actinic2Channel==AntiSync)
+                PWM.SetActinic2(AntiSyncSpeed);
+#endif
         if (DCPump.LowATOChannel==Sync)
             analogWrite(lowATOPin, 2.55*SyncSpeed);
 		else if (DCPump.LowATOChannel==AntiSync)
@@ -2484,10 +2600,10 @@ void ReefAngelClass::SetDCPumpChannels(byte SyncSpeed, byte AntiSyncSpeed)
 }
 #endif // DCPUMPCONTROL
 
-#ifdef RA_STAR
+#if defined RA_STAR || defined CLOUD_WIFI
 void MQTTSubCallback(char* topic, byte* payload, unsigned int length) {
   // handle message arrived
-	char mqtt_sub[10];
+	char mqtt_sub[12];
 	byte starti=0;
 	int mqtt_val=0;
 	long mqtt_val1=0;
@@ -2496,7 +2612,9 @@ void MQTTSubCallback(char* topic, byte* payload, unsigned int length) {
 	
 	for (int a=0;a<length;a++)
 	{
+#ifdef RA_STAR
 		Serial.write(payload[a]);
+#endif
 		if (starti==0)
 		{
 			mqtt_sub[a]=payload[a];
@@ -2505,6 +2623,7 @@ void MQTTSubCallback(char* topic, byte* payload, unsigned int length) {
 				mqtt_sub[a]=0;
 				starti=a;
 				if (strcmp("all", mqtt_sub)==0) mqtt_type=MQTT_REQUESTALL;
+				else if (strcmp("t", mqtt_sub)==0) mqtt_type=MQTT_T;
 				else if (strcmp("r", mqtt_sub)==0) mqtt_type=MQTT_R;
 				else if (strcmp("mf", mqtt_sub)==0) mqtt_type=MQTT_MODE_FEEDING;
 				else if (strcmp("mw", mqtt_sub)==0) mqtt_type=MQTT_MODE_WATERCHANGE;
@@ -2531,6 +2650,8 @@ void MQTTSubCallback(char* topic, byte* payload, unsigned int length) {
 				else if (strcmp("mb", mqtt_sub)==0) mqtt_type=MQTT_MEM_BYTE;
 				else if (strcmp("mi", mqtt_sub)==0) mqtt_type=MQTT_MEM_INT;
 				else if (strcmp("date", mqtt_sub)==0) mqtt_type=MQTT_DATE;
+				else if (strcmp("v", mqtt_sub)==0) mqtt_type=MQTT_VERSION;
+				else if (strcmp("mr", mqtt_sub)==0) mqtt_type=MQTT_MEM_RAW;
 			}
 		}
 		else
@@ -2538,27 +2659,38 @@ void MQTTSubCallback(char* topic, byte* payload, unsigned int length) {
 			if (payload[a]==58) // Let's look for a :
 			{
 				foundchannel=true;
-				mqtt_val=0;
+				//mqtt_val=0;
 			}
 			else
 			{
 				if (!foundchannel)
 				{
-					mqtt_val*=10;
-					mqtt_val+=(payload[a]-'0');
+					if (payload[a]!=0)
+					{
+						mqtt_val*=10;
+						mqtt_val+=(payload[a]-'0');
+					}
 				}
 				else
 				{
-					mqtt_val1*=10;
-					mqtt_val1+=(payload[a]-'0');
+					if (payload[a]!=0)
+					{
+						mqtt_val1*=10;
+						mqtt_val1+=(payload[a]-'0');
+					}
 				}
 			}
 		}
 	}
+#ifdef RA_STAR
 	Serial.println();
+#endif
 	switch (mqtt_type)
 	{
 		case MQTT_NONE:
+			break;
+		case MQTT_T:
+			ReefAngel.Params.Temp[mqtt_val]=mqtt_val1;
 			break;
 		case MQTT_R:
 			ReefAngel.CheckOverride(mqtt_val);
@@ -2566,11 +2698,11 @@ void MQTTSubCallback(char* topic, byte* payload, unsigned int length) {
 		case MQTT_REQUESTALL:
 			for (byte a=0; a<NumParamByte;a++)
 			{
-				ReefAngel.Network.OldParamArrayByte[a]=ReefAngel.Network.OldParamArrayByte[a]+1;
+				ReefAngel.OldParamArrayByte[a]=ReefAngel.OldParamArrayByte[a]+1;
 			}
 			for (byte a=0; a<NumParamInt;a++)
 			{
-				ReefAngel.Network.OldParamArrayInt[a]=ReefAngel.Network.OldParamArrayInt[a]+1;
+				ReefAngel.OldParamArrayInt[a]=ReefAngel.OldParamArrayInt[a]+1;
 			}
 			break;
 		case MQTT_MODE_FEEDING:
@@ -2611,11 +2743,6 @@ void MQTTSubCallback(char* topic, byte* payload, unsigned int length) {
 			ReefAngel.OverheatClear();
 			break;
 		}
-		case MQTT_ALARM_LEAK:
-		{
-			ReefAngel.LeakClear();
-			break;
-		}
 		case MQTT_LIGHTS:
 		{
 			if (mqtt_val==0)
@@ -2629,36 +2756,52 @@ void MQTTSubCallback(char* topic, byte* payload, unsigned int length) {
 			while(1);
 			break;
 		}
+#if defined LEAKDETECTOREXPANSION || defined RA_STAR
+		case MQTT_ALARM_LEAK:
+		{
+			ReefAngel.LeakClear();
+			break;
+		}
+		case MQTT_LEAK:
+		{
+			ReefAngel.LeakValue=mqtt_val;
+			bitSet(ReefAngel.CEM,CloudLeakBit);
+			break;
+		}
+#endif // LEAKDETECTOREXPANSION
+#ifdef SALINITYEXPANSION
 		case MQTT_SALINITY:
 		{
 			ReefAngel.Params.Salinity=mqtt_val;
 			bitSet(ReefAngel.CEM,CloudSalinityBit);
 			break;
 		}
-		case MQTT_CALIBRATION:
-			ReefAngel.CloudCalVal=mqtt_val;
-			break;
-		case MQTT_CUSTOM_CALIBRATION:
-			ReefAngel.CloudCalVal=mqtt_val1;
-			break;
+#endif // SALINITYEXPANSION
+#ifdef PHEXPANSION
 		case MQTT_PHEXP:
 		{
 			ReefAngel.Params.PHExp=mqtt_val;
 			bitSet(ReefAngel.CEM,CloudPHExpBit);
 			break;
 		}
+#endif // PHEXPANSION
+#ifdef ORPEXPANSION
 		case MQTT_ORP:
 		{
 			ReefAngel.Params.ORP=mqtt_val;
 			bitSet(ReefAngel.CEM,CloudORPBit);
 			break;
 		}
+#endif // ORPEXPANSION
+#ifdef IOEXPANSION
 		case MQTT_IO:
 		{
 			ReefAngel.IO.IOPorts=mqtt_val;
 			bitSet(ReefAngel.CEM,CloudIOBit);
 			break;
 		}
+#endif // IOEXPANSION
+#if defined WATERLEVELEXPANSION || defined MULTIWATERLEVELEXPANSION 
 		case MQTT_WL:
 		{
 			if (mqtt_val < 5) ReefAngel.WaterLevel.level[mqtt_val]=mqtt_val1;
@@ -2668,61 +2811,121 @@ void MQTTSubCallback(char* topic, byte* payload, unsigned int length) {
 				bitSet(ReefAngel.CEM,CloudMultiWLBit);
 			break;
 		}
-		case MQTT_LEAK:
-		{
-			ReefAngel.LeakValue=mqtt_val;
-			bitSet(ReefAngel.CEM,CloudLeakBit);
-			break;
-		}
+#endif
+#ifdef PAREXPANSION
 		case MQTT_PAR:
 		{
 			ReefAngel.PAR.level=mqtt_val;
 			bitSet(ReefAngel.CEM,CloudPARBit);
 			break;
 		}
+#endif // PAREXPANSION
+#ifdef CUSTOM_VARIABLES
+		case MQTT_CVAR:
+		{
+			if (mqtt_val < 8) ReefAngel.CustomVar[mqtt_val]=mqtt_val1;
+			break;
+		}
+#endif // CUSTOM_VARIABLES
+#if defined DisplayLEDPWM && ! defined RemoveAllLights || defined DCPUMPCONTROL
 		case MQTT_OVERRIDE:
 		{
 			if (mqtt_val < OVERRIDE_CHANNELS) ReefAngel.DimmingOverride(mqtt_val1,mqtt_val);
 			break;
 		}
-		case MQTT_CVAR:
-		{
-			if (mqtt_val < 8) ReefAngel.CustomVar[mqtt_val]=mqtt_val1;		
-			break;
-		}
-		case MQTT_MEM_BYTE:
-		{
-			InternalMemory.write(mqtt_val, mqtt_val1);
-			break;
-		}
-		case MQTT_MEM_INT:
-		{
-			InternalMemory.write_int(mqtt_val, mqtt_val1);
-			break;
-		}
+#endif
+#ifdef RA_STAR
 		case MQTT_CUSTOM_EXP:
 		{
 			ReefAngel.CustomExpansionValue[mqtt_val]=mqtt_val1;
 			break;
 		}
+#endif
+		case MQTT_CALIBRATION:
+			ReefAngel.CloudCalVal=mqtt_val;
+			break;
+		case MQTT_CUSTOM_CALIBRATION:
+			ReefAngel.CloudCalVal=mqtt_val1;
+			break;
+		case MQTT_MEM_BYTE:
+		{
+			InternalMemory.write(mqtt_val, mqtt_val1);
+			char buffer[16];
+			sprintf(buffer, "MBOK:%d", mqtt_val);
+#ifdef RA_STAR
+			ReefAngel.Network.CloudPublish(buffer);
+#endif
+#ifdef CLOUD_WIFI
+			Serial.println(buffer);
+#endif
+			break;
+		}
+		case MQTT_MEM_INT:
+		{
+			InternalMemory.write_int(mqtt_val, mqtt_val1);
+			char buffer[16];
+			sprintf(buffer, "MIOK:%d", mqtt_val);
+#ifdef RA_STAR
+			ReefAngel.Network.CloudPublish(buffer);
+#endif
+#ifdef CLOUD_WIFI
+			Serial.println(buffer);
+#endif
+			break;
+		}
 		case MQTT_DATE:
 		{
+			Serial.println(mqtt_val);
+			Serial.println(mqtt_val1);
 			if (mqtt_val==1)
 			{
 				uint8_t dmon, dday, dyear, dhr, dmin;
-				dmon=mqtt_val1/100000000;
-				dyear=(mqtt_val1%1000000)/10000;
-				dday=(mqtt_val1%100000000)/1000000;
-				dhr=(mqtt_val1%10000)/100;
-				dmin=mqtt_val1%100;
+				dhr=mqtt_val1/100000000;
+				dmin=(mqtt_val1%100000000)/1000000;
+				dmon=(mqtt_val1%1000000)/10000;
+				dday=(mqtt_val1%10000)/100;
+				dyear=mqtt_val1%100;
 				setTime(dhr, dmin, 0, dday, dmon, dyear);
 				now();
 				RTC.set(now());
 			}
 			char buffer[16];
 			sprintf(buffer, "DATE:%02d%02d%02d%02d%02d", month(), day(), year()-2000, hour(), minute());
+#ifdef RA_STAR
 			ReefAngel.Network.CloudPublish(buffer);
+#endif
+#ifdef CLOUD_WIFI
+			Serial.println(buffer);
+#endif
 			break;
+		}
+		case MQTT_VERSION:
+		{
+			char buffer[16];
+			sprintf(buffer, "V:%s", ReefAngel_Version);
+#ifdef RA_STAR
+			ReefAngel.Network.CloudPublish(buffer);
+#endif
+#ifdef CLOUD_WIFI
+			Serial.println(buffer);
+#endif
+			break;
+		}
+		case MQTT_MEM_RAW:
+		{
+			int mindex=0;
+			char buffer[21];
+			while ((VarsEnd-VarsStart-mindex)>8)
+			{
+				sprintf(buffer,"MR%02d:%02x%02x%02x%02x%02x%02x%02x%02x",mindex/8,InternalMemory.read(VarsStart+mindex+0),InternalMemory.read(VarsStart+mindex+1),InternalMemory.read(VarsStart+mindex+2),InternalMemory.read(VarsStart+mindex+3),InternalMemory.read(VarsStart+mindex+4),InternalMemory.read(VarsStart+mindex+5),InternalMemory.read(VarsStart+mindex+6),InternalMemory.read(VarsStart+mindex+7));
+#ifdef RA_STAR
+			ReefAngel.Network.CloudPublish(buffer);
+#endif
+#ifdef CLOUD_WIFI
+			Serial.println(buffer);
+#endif
+				mindex+=8;
+			}
 		}
 	}
 }
