@@ -21,6 +21,13 @@ RA_Wiznet5100::RA_Wiznet5100()
 
 void RA_Wiznet5100::Init()
 {
+	NetMac[5] = InternalMemory.read(StarMac);
+	if (NetMac[5]==0xff)
+	{
+		byte tempmac = random(0xff);
+		InternalMemory.write(StarMac,tempmac);
+		NetMac[5] = tempmac;
+	}
 	EthernetDHCP.begin(NetMac, 1); // Start Ethernet with DHCP polling enabled
 	NetServer.begin();
 	FoundIP=false;
@@ -32,6 +39,7 @@ void RA_Wiznet5100::Init()
 	MQTTReconnectmillis=millis();
 	MQTTSendmillis=millis();
 	downloadsize=0;
+	sd_index=0;
 }
 
 void RA_Wiznet5100::Update()
@@ -63,13 +71,36 @@ void RA_Wiznet5100::Update()
 			while(PortalClient.available())
 			{
 				wdt_reset();
-				char c = PortalClient.read();
 				if (payload_ready)
 				{
-					firwareFile.write(c);
+					if (PortalClient.available()>32)
+					{
+						for (int a=0;a<32;a++)
+							sd_buffer[a]=PortalClient.read();
+						firwareFile.write(sd_buffer,32);
+						downloadsize+=32;
+						sd_index++;
+						if (sd_index==32)
+						{
+							sd_index=0;
+							ReefAngel.Timer[PORTAL_TIMER].Start();  // start timer
+							PortalTimeOut=millis();
+							ReefAngel.Font.DrawTextP(38,9,DOWNLOADING);
+							ReefAngel.Font.DrawText((downloadsize*100)/lheader);
+							ReefAngel.Font.DrawText("%");
+						}
+					}
+					else
+					{
+						char c = PortalClient.read();
+						downloadsize++;
+						firwareFile.write(c);
+					}
 				}
 				else
 				{
+					char c = PortalClient.read();
+					downloadsize++;
 					headerline+=c;
 					Serial.write(c);
 					if (c == '\n')
@@ -89,7 +120,7 @@ void RA_Wiznet5100::Update()
 							if (FirmwareConnection)
 							{
 								payload_ready = true;
-								downloading = true;
+								if (lheader>0) downloading = true;
 							}
 							downloadsize=0;
 						}
@@ -99,10 +130,8 @@ void RA_Wiznet5100::Update()
 						}
 					}
 				}
-				downloadsize++;
 			}
-			ReefAngel.Timer[PORTAL_TIMER].Start();  // start timer
-			Serial.println(downloadsize-1);
+			Serial.println(downloadsize);
 			if (PortalConnection) PortalDataReceived=true;
 			Serial.println(F("Received"));
 		}
@@ -129,7 +158,7 @@ void RA_Wiznet5100::Update()
 		if (!PortalClient.connected() && FirmwareConnection)
 		{
 			Serial.print(F("Data: "));
-			Serial.println(--downloadsize);
+			Serial.println(downloadsize);
 			Serial.print(F("Header: "));
 			Serial.println(lheader);
 			Serial.println(F("Disconnected"));
@@ -141,6 +170,7 @@ void RA_Wiznet5100::Update()
 			if (firwareFile) firwareFile.close();
 			if (lheader==downloadsize && downloadsize>600)
 			{
+				if (firwareFile) firwareFile.close();
 				Serial.println(F("Updating..."));
 				InternalMemory.write(RemoteFirmware, 0xf0);
 				while(1);
@@ -266,60 +296,63 @@ boolean RA_Wiznet5100::IsMQTTConnected()
 
 void RA_Wiznet5100::Cloud()
 {
-	if (FoundIP)
+	if (!payload_ready)
 	{
-		Portal(CLOUD_USERNAME);
-		MQTTClient.loop();
-		if (millis()-MQTTReconnectmillis>5000)
+		if (FoundIP)
 		{
-			if (!MQTTClient.connected())
+			Portal(CLOUD_USERNAME);
+			MQTTClient.loop();
+			if (millis()-MQTTReconnectmillis>5000)
 			{
-				char sub_buffer[sizeof(CLOUD_USERNAME)+6];
-				MQTTReconnectmillis=millis();
-				Serial.println(F("MQTT Connecting..."));
-				wdt_reset();
-				sprintf(sub_buffer, "RA-%s", CLOUD_USERNAME);
-				if (MQTTClient.connect(sub_buffer,CLOUD_USERNAME,CLOUD_PASSWORD))
+				if (!MQTTClient.connected())
 				{
-					sprintf(sub_buffer, "%s/in/#", CLOUD_USERNAME);
-					Serial.println(F("MQTT succeeded"));
-					MQTTClient.subscribe(sub_buffer);
+					char sub_buffer[sizeof(CLOUD_USERNAME)+6];
+					MQTTReconnectmillis=millis();
+					Serial.println(F("MQTT Connecting..."));
 					wdt_reset();
-				}
-				else
-				{
-					Serial.println(F("MQTT failed"));
-					MQTTClient.disconnect();
+					sprintf(sub_buffer, "RA-%s", CLOUD_USERNAME);
+					if (MQTTClient.connect(sub_buffer,CLOUD_USERNAME,CLOUD_PASSWORD))
+					{
+						sprintf(sub_buffer, "%s/in/#", CLOUD_USERNAME);
+						Serial.println(F("MQTT succeeded"));
+						MQTTClient.subscribe(sub_buffer);
+						wdt_reset();
+					}
+					else
+					{
+						Serial.println(F("MQTT failed"));
+						MQTTClient.disconnect();
+					}
 				}
 			}
+			
+			if (millis()-MQTTSendmillis>1000 && MQTTClient.connected())
+			{
+				MQTTSendmillis=millis();
+				for (byte a=0; a<NumParamByte;a++)
+				{
+					if (*ReefAngel.ParamArrayByte[a]!=ReefAngel.OldParamArrayByte[a])
+					{
+						char buffer[15];
+						strcpy_P(buffer, (char*)pgm_read_word(&(param_items_byte[a]))); 
+						sprintf(buffer, "%s:%d", buffer, *ReefAngel.ParamArrayByte[a]);
+						CloudPublish(buffer);
+						ReefAngel.OldParamArrayByte[a]=*ReefAngel.ParamArrayByte[a];
+					}
+				}
+				for (byte a=0; a<NumParamInt;a++)
+				{
+					if (*ReefAngel.ParamArrayInt[a]!=ReefAngel.OldParamArrayInt[a])
+					{
+						char buffer[15];
+						strcpy_P(buffer, (char*)pgm_read_word(&(param_items_int[a]))); 
+						sprintf(buffer, "%s:%d", buffer, *ReefAngel.ParamArrayInt[a]);
+						CloudPublish(buffer);
+						ReefAngel.OldParamArrayInt[a]=*ReefAngel.ParamArrayInt[a];
+					}
+				}
+			}		
 		}
-		
-		if (millis()-MQTTSendmillis>1000 && MQTTClient.connected())
-		{
-			MQTTSendmillis=millis();
-			for (byte a=0; a<NumParamByte;a++)
-			{
-				if (*ReefAngel.ParamArrayByte[a]!=ReefAngel.OldParamArrayByte[a])
-				{
-					char buffer[15];
-					strcpy_P(buffer, (char*)pgm_read_word(&(param_items_byte[a]))); 
-					sprintf(buffer, "%s:%d", buffer, *ReefAngel.ParamArrayByte[a]);
-					CloudPublish(buffer);
-					ReefAngel.OldParamArrayByte[a]=*ReefAngel.ParamArrayByte[a];
-				}
-			}
-			for (byte a=0; a<NumParamInt;a++)
-			{
-				if (*ReefAngel.ParamArrayInt[a]!=ReefAngel.OldParamArrayInt[a])
-				{
-					char buffer[15];
-					strcpy_P(buffer, (char*)pgm_read_word(&(param_items_int[a]))); 
-					sprintf(buffer, "%s:%d", buffer, *ReefAngel.ParamArrayInt[a]);
-					CloudPublish(buffer);
-					ReefAngel.OldParamArrayInt[a]=*ReefAngel.ParamArrayInt[a];
-				}
-			}
-		}		
 	}
 }
 
