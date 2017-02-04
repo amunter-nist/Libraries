@@ -210,7 +210,7 @@ public:
 #endif
 	byte EM,EM1;
 	byte REM;
-	byte CEM;
+	byte CEM, CEM1;
 
 	/*
 	EM Bits
@@ -356,10 +356,11 @@ public:
 	&CloudDummyByte,
 #endif
 #ifdef CUSTOM_VARIABLES
-	&CustomVar[0],&CustomVar[1],&CustomVar[2],&CustomVar[3],&CustomVar[4],&CustomVar[5],&CustomVar[6],&CustomVar[7]
+	&CustomVar[0],&CustomVar[1],&CustomVar[2],&CustomVar[3],&CustomVar[4],&CustomVar[5],&CustomVar[6],&CustomVar[7],
 #else
-	&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte
+	&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,&CloudDummyByte,
 #endif
+	&Relay.RelayData,&Relay.RelayMaskOff,&Relay.RelayMaskOn
 	};
 	
 	int* ParamArrayInt[NumParamInt] = {&Params.Temp[T1_PROBE],&Params.Temp[T2_PROBE],&Params.Temp[T3_PROBE],&Params.PH,
@@ -453,6 +454,9 @@ public:
 
 	boolean isATOTimeOut();
 	boolean isOverheat();
+	boolean isFeedingMode();
+	boolean isWaterChangeMode();
+	boolean isLightsOnMode();
 	
 	void StandardLights(byte LightsRelay, byte OnHour, byte OnMinute, byte OffHour, byte OffMinute);
 	void MHLights(byte LightsRelay, byte OnHour, byte OnMinute, byte OffHour, byte OffMinute, byte MHDelay);
@@ -495,9 +499,11 @@ public:
 	void MHLights(byte Relay);
 	void MHLights(byte Relay, byte MinuteOffset);
 	void StandardHeater(byte Relay);
+	void inline StandardHeater1(byte Relay) { StandardHeater(Relay); } ;
 	void StandardHeater2(byte Relay);
 	void StandardHeater3(byte Relay);
 	void StandardFan(byte Relay);
+	void inline StandardFan1(byte Relay) { StandardFan(Relay); } ;
 	void StandardFan2(byte Relay);
 	void StandardFan3(byte Relay);
 	void StandardATO(byte Relay);
