@@ -21,6 +21,14 @@
 #define __REEFANGEL_FEATURES_H__
 
 #define SIMPLE_MENU
+#define InstalledRelayExpansionModules 1
+#define FONT_8x8
+#define MAIN_2014
+#define DisplayLEDPWM
+#define DCPUMPCONTROL
+#define RelayExp
+#define CUSTOM_VARIABLES
+#define wifi
 #define VersionMenu
 #define WDT
 
