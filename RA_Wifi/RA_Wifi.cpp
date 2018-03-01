@@ -215,6 +215,7 @@ void RA_Wifi::PushBuffer(byte inStr)
 #endif
             else if (strncmp("GET /cal", m_pushback, 8)==0) { reqtype = -REQ_CALIBRATION; weboption2 = -1; bHasSecondValue = false; bCommaCount = 0; }
             else if (strncmp("GET /json", m_pushback, 9)==0) reqtype = REQ_JSON;
+            else if (strncmp("GET /favicon.ico", m_pushback, 16)==0) reqtype = REQ_FAVICON;
 #ifdef CLOUD_WIFI
             else if (strncmp("cloud:", m_pushback, 6)==0)
             {
@@ -252,6 +253,7 @@ void RA_Wifi::ProcessHTTP()
 	switch ( reqtype )
 	{
 		case REQ_ROOT:
+		case REQ_FAVICON:
 		{
 			WebResponse(SERVER_DEFAULT, sizeof(SERVER_DEFAULT) - 1);
 			break;
@@ -276,6 +278,13 @@ void RA_Wifi::ProcessHTTP()
 			s += intlength(ReefAngel.Params.Temp[T1_PROBE]);
 			s += intlength(ReefAngel.Params.Temp[T2_PROBE]);
 			s += intlength(ReefAngel.Params.Temp[T3_PROBE]);
+#ifdef EXTRA_TEMP_PROBES
+			//<T4></T4><T5></T5><T6></T6>
+			s += 27;
+			s += intlength(ReefAngel.Params.Temp[T4_PROBE]);
+			s += intlength(ReefAngel.Params.Temp[T5_PROBE]);
+			s += intlength(ReefAngel.Params.Temp[T6_PROBE]);
+#endif
 			s += intlength(ReefAngel.Params.PH);
 			s += intlength(ReefAngel.EM);
 			s += intlength(ReefAngel.EM1);
@@ -859,6 +868,13 @@ void RA_Wifi::ProcessHTTP()
 			s += intlength(ReefAngel.Params.Temp[T1_PROBE]);
 			s += intlength(ReefAngel.Params.Temp[T2_PROBE]);
 			s += intlength(ReefAngel.Params.Temp[T3_PROBE]);
+#ifdef EXTRA_TEMP_PROBES
+			//,"T1":"","T2":"","T3":""
+			s += 24;
+			s += intlength(ReefAngel.Params.Temp[T4_PROBE]);
+			s += intlength(ReefAngel.Params.Temp[T5_PROBE]);
+			s += intlength(ReefAngel.Params.Temp[T6_PROBE]);
+#endif
 			s += intlength(ReefAngel.Params.PH);
 			s += intlength(ReefAngel.EM);
 			s += intlength(ReefAngel.EM1);
@@ -1048,7 +1064,7 @@ void RA_Wifi::PrintHeader(int s, byte type)
 
 	PROGMEMprint(SERVER_HEADER2);
 	print(s, DEC);
-	print("\r\n\r\n");
+	PROGMEMprint(SERVER_HEADER3);
 }
 
 char RA_Wifi::GetC(int c)
@@ -1096,6 +1112,14 @@ void RA_Wifi::SendXMLData(bool fAtoLog /*= false*/)
 	print(ReefAngel.Params.Temp[T2_PROBE]);
 	PROGMEMprint(XML_T3);
 	print(ReefAngel.Params.Temp[T3_PROBE]);
+#ifdef EXTRA_TEMP_PROBES
+	PROGMEMprint(XML_T4);
+	print(ReefAngel.Params.Temp[T4_PROBE]);
+	PROGMEMprint(XML_T5);
+	print(ReefAngel.Params.Temp[T5_PROBE]);
+	PROGMEMprint(XML_T6);
+	print(ReefAngel.Params.Temp[T6_PROBE]);
+#endif
 	PROGMEMprint(XML_PH);
 	print(ReefAngel.Params.PH);
 	PROGMEMprint(XML_R);
@@ -1468,6 +1492,11 @@ void RA_Wifi::SendJSONData()
 	SendSingleJSON(JSON_T1,ReefAngel.Params.Temp[T1_PROBE]);
 	SendSingleJSON(JSON_T2,ReefAngel.Params.Temp[T2_PROBE]);
 	SendSingleJSON(JSON_T3,ReefAngel.Params.Temp[T3_PROBE]);
+#ifdef EXTRA_TEMP_PROBES
+	SendSingleJSON(JSON_T4,ReefAngel.Params.Temp[T4_PROBE]);
+	SendSingleJSON(JSON_T5,ReefAngel.Params.Temp[T5_PROBE]);
+	SendSingleJSON(JSON_T6,ReefAngel.Params.Temp[T6_PROBE]);
+#endif // EXTRA_TEMP_PROBES
 	SendSingleJSON(JSON_PH,ReefAngel.Params.PH);
 	SendSingleJSON(JSON_R,ReefAngel.Relay.RelayData);
 	SendSingleJSON(JSON_RON,ReefAngel.Relay.RelayMaskOn);
@@ -1751,21 +1780,21 @@ void RA_Wifi::SendPortal(char *username, char*key)
 {
   ReefAngel.Timer[PORTAL_TIMER].Start();
 #ifdef ETH_WIZ5100
-  Serial.println(F("Portal Call"));
   if (!ReefAngel.Network.FoundIP) return;
   if (!ReefAngel.Network.PortalConnection)
   {
 	  ReefAngel.Network.PortalConnection=true;
 	  PortalWaiting=false;
+	  Serial.println(F("Portal Call"));
 	  ReefAngel.Network.PortalConnect();
-	  Serial.println(F("Connecting..."));
+	  //Serial.println(F("Connecting..."));
   }
   else
   {
 	if (ReefAngel.Network.IsPortalConnected() && !PortalWaiting) // Check for connection established
 	{
 		PortalWaiting=true;
-		Serial.println(F("Connected"));
+		//Serial.println(F("Connected"));
 #endif
   PROGMEMprint(BannerGET);
   print(ReefAngel.Params.Temp[T1_PROBE], DEC);
@@ -1773,6 +1802,14 @@ void RA_Wifi::SendPortal(char *username, char*key)
   print(ReefAngel.Params.Temp[T2_PROBE], DEC);
   PROGMEMprint(BannerT3);
   print(ReefAngel.Params.Temp[T3_PROBE], DEC);
+#ifdef EXTRA_TEMP_PROBES
+  PROGMEMprint(BannerT4);
+  print(ReefAngel.Params.Temp[T4_PROBE], DEC);
+  PROGMEMprint(BannerT5);
+  print(ReefAngel.Params.Temp[T5_PROBE], DEC);
+  PROGMEMprint(BannerT6);
+  print(ReefAngel.Params.Temp[T6_PROBE], DEC);
+#endif // EXTRA_TEMP_PROBES
   PROGMEMprint(BannerPH);
   print(ReefAngel.Params.PH, DEC);
   PROGMEMprint(BannerID);

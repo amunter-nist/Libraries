@@ -32,7 +32,14 @@ const char XML_ID[] PROGMEM = "<RA><ID>";
 const char XML_T1[] PROGMEM = "</ID><T1>";
 const char XML_T2[] PROGMEM = "</T1><T2>";
 const char XML_T3[] PROGMEM = "</T2><T3>";
+#ifdef EXTRA_TEMP_PROBES
+const char XML_T4[] PROGMEM = "</T3><T4>";
+const char XML_T5[] PROGMEM = "</T4><T5>";
+const char XML_T6[] PROGMEM = "</T5><T6>";
+const char XML_PH[] PROGMEM = "</T6><PH>";
+#else
 const char XML_PH[] PROGMEM = "</T3><PH>";
+#endif
 const char XML_R[] PROGMEM = "</PH><R>";
 const char XML_RON[] PROGMEM = "</R><RON>";
 const char XML_ROFF[] PROGMEM = "</RON><ROFF>";
@@ -132,6 +139,7 @@ const char XML_ERR[] PROGMEM = "ERR";
 
 const char SERVER_HEADER1[] PROGMEM = "HTTP/1.1 200 OK\r\nServer: ReefAngel\r\nCache-Control: no-store, no-cache, must-revalidate\r\nPragma: no-cache\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET\r\nConnection: close\r\nContent-Type: text/";
 const char SERVER_HEADER2[] PROGMEM = "\r\nContent-Length: ";
+const char SERVER_HEADER3[] PROGMEM = "\r\n\r\n";
 const char SERVER_DENY[] PROGMEM = "HTTP/1.1 401 Access Denied\r\nWWW-Authenticate: Basic realm=Reef Angel Controller\r\nContent-Length: 0\r\n";
 const char SERVER_DEFAULT[] PROGMEM = "<h1>Reef Angel Controller Web Server</h1>";
 
@@ -141,6 +149,9 @@ const char JSON_ID[] PROGMEM = "ID";
 const char JSON_T1[] PROGMEM = "T1";
 const char JSON_T2[] PROGMEM = "T2";
 const char JSON_T3[] PROGMEM = "T3";
+const char JSON_T4[] PROGMEM = "T4";
+const char JSON_T5[] PROGMEM = "T5";
+const char JSON_T6[] PROGMEM = "T6";
 const char JSON_PH[] PROGMEM = "PH";
 const char JSON_R[] PROGMEM = "R";
 const char JSON_RON[] PROGMEM = "RON";
@@ -285,6 +296,7 @@ const char JSON_CLOSE[] PROGMEM = "}}";
 #define REQ_M_CVAR		23		// Custom Variable
 #define REQ_CALIBRATION	24		// Calibration
 #define REQ_JSON		25		// JSON export
+#define REQ_FAVICON		26		// favicon
 #define REQ_HTTP		127		// HTTP get request from  external server
 #define REQ_UNKNOWN		128	 	// Unknown request
 
@@ -298,6 +310,9 @@ const char BannerHost[] PROGMEM = "Host: forum.reefangel.com\r\n";
 const char BannerConnectionClose[] PROGMEM = "Connection: close\r\n";
 const char BannerT2[] PROGMEM = "&t2=";
 const char BannerT3[] PROGMEM = "&t3=";
+const char BannerT4[] PROGMEM = "&t4=";
+const char BannerT5[] PROGMEM = "&t5=";
+const char BannerT6[] PROGMEM = "&t6=";
 const char BannerPH[] PROGMEM = "&ph=";
 const char BannerATOHIGH[] PROGMEM = "&atohigh=";
 const char BannerATOLOW[] PROGMEM = "&atolow=";
@@ -508,6 +523,7 @@ class RA_Wifi: public Print
     char *portalkey;
     char encodeduserpass[50];
     char *portalsubdomain;
+    inline boolean BlockCloud() { return reqtype!=0; };
     
 #ifndef ETH_WIZ5100
     using Print::write;

@@ -40,6 +40,7 @@ void RA_Wiznet5100::Init()
 	MQTTSendmillis=millis();
 	downloadsize=0;
 	sd_index=0;
+	goodheader=false;
 }
 
 void RA_Wiznet5100::Update()
@@ -67,7 +68,7 @@ void RA_Wiznet5100::Update()
 		    String headerline="";
 
 		    PortalTimeOut=millis();
-		    Serial.println(F("Receiving..."));
+		    //Serial.println(F("Receiving"));
 			while(PortalClient.available())
 			{
 				wdt_reset();
@@ -77,7 +78,7 @@ void RA_Wiznet5100::Update()
 					{
 						for (int a=0;a<32;a++)
 							sd_buffer[a]=PortalClient.read();
-						firwareFile.write(sd_buffer,32);
+						if (goodheader) firwareFile.write(sd_buffer,32);
 						downloadsize+=32;
 						sd_index++;
 						if (sd_index==32)
@@ -105,6 +106,8 @@ void RA_Wiznet5100::Update()
 					Serial.write(c);
 					if (c == '\n')
 					{
+						if (headerline.indexOf("200 OK"))
+							goodheader=true;
 						byte sheader = headerline.indexOf("Length");
 						if (sheader==8)
 							lheader=headerline.substring(sheader+8).toInt();
@@ -131,9 +134,9 @@ void RA_Wiznet5100::Update()
 					}
 				}
 			}
-			Serial.println(downloadsize);
+			//Serial.println(downloadsize);
 			if (PortalConnection) PortalDataReceived=true;
-			Serial.println(F("Received"));
+			//Serial.println(F("Received"));
 		}
 
 		// if the server has disconnected, stop the client
@@ -150,6 +153,7 @@ void RA_Wiznet5100::Update()
 			downloadsize=0;
 			lheader=0;
 		    payload_ready = false;
+		    goodheader=false;
 			delay(100);
 			FirmwareConnect();
 			Serial.println(F("Connecting..."));
@@ -286,6 +290,7 @@ void RA_Wiznet5100::FirmwareConnect()
 
 boolean RA_Wiznet5100::IsPortalConnected()
 {
+	wdt_reset();
 	return PortalClient.checkconnect()==0x17;
 }
 
