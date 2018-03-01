@@ -10,9 +10,11 @@
 
 #define MAX_RELAY_EXPANSION_MODULES     8
 #define PWM_EXPANSION_CHANNELS     		6
+#define PWM16_EXPANSION_CHANNELS     		16
 #define IO_EXPANSION_CHANNELS     		6
 #define WL_CHANNELS						5
 #define CUSTOM_EXP_MODULES				8
+#define TEMP_PROBES						2
 
 #define CUSTOM_NONE	0
 #define CUSTOM_SALINITY	1
@@ -25,10 +27,12 @@
 #define CUSTOM_MULTI_WL4	8
 
 typedef struct  {
+  int Temp[TEMP_PROBES+1];
   int Salinity;
   int ORP;
   int PHExp;
   int PAR;
+  int Humidity;
   byte WL[WL_CHANNELS];
   byte Leak;
   byte IO;
@@ -44,6 +48,7 @@ typedef struct  {
 #define I2CIO_PCF8574       0x27
 #define I2CExpModule        0x38 // 0x38-3f
 #define I2CPWM_PCA9685		0x40
+#define I2CPWM_16CH_PCA9685		0x41
 #define I2CLeak				0X48
 #define I2CMultiWaterLevel	0X49
 #define I2CPAR				0X4a
@@ -51,6 +56,8 @@ typedef struct  {
 #define I2CSalinity			0X4d
 #define I2CPH				0X4e
 #define I2CWaterLevel		0X4f
+#define I2CEEPROM1          0x50
+#define I2CHumidity			0x5c
 
 #define VarsStart                 200
 #define Mem_I_SalMax			  VarsStart+47
@@ -98,7 +105,10 @@ static byte RelayMaskOffE[MAX_RELAY_EXPANSION_MODULES];
 static byte RelayFallBackE[MAX_RELAY_EXPANSION_MODULES];
 static byte ExpansionChannel[PWM_EXPANSION_CHANNELS];
 static byte ExpansionChannelOverride[PWM_EXPANSION_CHANNELS];
+static int Expansion16Channel[PWM16_EXPANSION_CHANNELS];
+static byte Expansion16ChannelOverride[PWM16_EXPANSION_CHANNELS];
 static byte lastcrc;
+static int lastcrc16;
 static ParamsStruct Params;
 static ParamsStruct OldParams;
 static unsigned long Paramsmillis=millis();
@@ -119,20 +129,28 @@ static char pub_wl[16];
 static char pub_multiwl[16];
 static char pub_custom_wl[16];
 static char pub_custom_multiwl[16];
+static char pub_humidity[16];
 static boolean SalinityFound;
 static boolean ORPFound;
 static boolean PHExpFound;
 static boolean WLFound;
 static boolean MultiWLFound;
+static boolean HumidityFound;
 
 
+#if defined(ARDUINO_ARCH_SAMD)
+WiFiServer server(2000);
+WiFiClient client;
+WiFiClient portalclient;
+WiFiClient mqttclient;
+#elif defined(ESP8266)
 
-#define	MQTTPort	1883
-
+#else
 static EthernetServer NetServer(2000);
 static byte NetMac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xE0 };
-static byte MQTTServer[] = { 69, 198, 171, 165 }; // forum.reefangel.com
 static EthernetClient ethClient;
+#endif // ARDUINO_ARCH_SAMD
+
 static boolean FoundIP=false;
 static unsigned long MQTTReconnectmillis=millis();
 static unsigned long MQTTSendmillis=millis();
